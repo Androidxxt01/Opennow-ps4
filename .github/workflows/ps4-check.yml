@@ -39,6 +39,23 @@ jobs:
           fi
           find "$OO" -maxdepth 2 | head -30
 
+      - name: Achar libc++
+        shell: bash
+        run: |
+          ATOMIC_FILE=$(find /tmp/oo -type f -name atomic -path '*c++*' | head -1)
+          echo "Arquivo atomic encontrado: ${ATOMIC_FILE:-nenhum}"
+          echo "Diretorios v1:"
+          find /tmp/oo -type d -name 'v1' -path '*c++*' | head
+          echo "Diretorios include:"
+          find /tmp/oo -maxdepth 4 -type d -name 'include' | head -20
+          if [ -z "$ATOMIC_FILE" ]; then
+            echo "::error::libc++ ausente no toolchain"
+            exit 1
+          fi
+          LIBCXX_INCLUDE=$(dirname "$ATOMIC_FILE")
+          echo "LIBCXX_INCLUDE=$LIBCXX_INCLUDE" >> "$GITHUB_ENV"
+          echo "LIBCXX_INCLUDE=$LIBCXX_INCLUDE"
+
       - name: Isolar headers do Jansson
         run: |
           mkdir -p /tmp/jansson-inc && cp /usr/include/jansson.h /usr/include/x86_64-linux-gnu/jansson_config.h /tmp/jansson-inc/ 2>/dev/null || cp /usr/include/jansson_config.h /tmp/jansson-inc/
@@ -48,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc 2>&1 | tee check.log
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc LIBCXX_INCLUDE="$LIBCXX_INCLUDE" 2>&1 | tee check.log
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -10,7 +10,9 @@ COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
 	-I$(ROOT)/extern/ffmpeg/include \
 	-I$(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib \
 	-I$(ROOT)/extern/libpeer/third_party/mbedtls/include \
-	-I$(JANSSON_INCLUDE) -nostdlibinc -isystem $(OPENORBIS)/include
+	-I$(JANSSON_INCLUDE) -nostdlibinc
+C_INCLUDE_FLAGS := -isystem $(OPENORBIS)/include
+CXX_INCLUDE_FLAGS := -nostdinc++ -isystem $(LIBCXX_INCLUDE) $(C_INCLUDE_FLAGS)
 CFLAGS ?= -std=c11 -Wall -Wextra
 CXXFLAGS ?= -std=c++20 -Wall -Wextra
 
@@ -48,11 +50,11 @@ all: $(OBJECTS)
 
 $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(COMMON_FLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
