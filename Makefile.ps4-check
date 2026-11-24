@@ -17,6 +17,9 @@ CFLAGS ?= -std=c11 -Wall -Wextra -ferror-limit=0
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -ferror-limit=0
 
 USRSCTP_DIR := $(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib
+# O alvo freebsd12 define __FreeBSD__ por padrao; usrsctp precisa do caminho
+# userspace generico (o mesmo do CMake do Switch), nao dos ramos de kernel.
+USRSCTP_CFLAGS := -U__FreeBSD__ -D_GNU_SOURCE -DSCTP_PROCESS_LEVEL_LOCKS
 USRSCTP_SOURCES := \
 	$(USRSCTP_DIR)/netinet/sctp_asconf.c \
 	$(USRSCTP_DIR)/netinet/sctp_auth.c \
@@ -50,7 +53,8 @@ all: $(OBJECTS)
 
 $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) \
+		$(if $(filter $(USRSCTP_DIR)/%,$<),$(USRSCTP_CFLAGS)) -c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
 	@mkdir -p $(dir $@)
