@@ -1,0 +1,44 @@
+name: ps4-check
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Dependencias
+        run: sudo apt-get update && sudo apt-get install -y clang lld libjansson-dev unzip
+
+      - name: OpenOrbis SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=OpenOrbis/OpenOrbis-PS4-Toolchain
+          echo "Assets da release:"
+          gh release view -R $R --json assets -q '.assets[].name'
+          mkdir -p /tmp/oo
+          gh release download -R $R --pattern '*inux*' --dir /tmp/oo
+          cd /tmp/oo
+          for f in *; do
+            case "$f" in
+              *.zip) unzip -q "$f" ;;
+              *.tar.gz|*.tgz) tar xzf "$f" ;;
+            esac
+          done
+          OO=$(find /tmp/oo -name errno.h -path '*include*' -print -quit | sed 's|/include/.*||')
+          echo "OPENORBIS=$OO" >> "$GITHUB_ENV"
+          echo "SDK em: $OO"
+
+      - name: Check de compilacao
+        run: make -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/usr/include 2>&1 | tee check.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-log
+          path: check.log
