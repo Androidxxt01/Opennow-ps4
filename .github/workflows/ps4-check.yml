@@ -22,7 +22,7 @@ jobs:
           echo "Assets da release:"
           gh release view -R $R --json assets -q '.assets[].name'
           mkdir -p /tmp/oo
-          gh release download -R $R --pattern '*inux*' --dir /tmp/oo
+          gh release download -R $R --pattern 'toolchain-llvm-18.tar.gz' --dir /tmp/oo
           cd /tmp/oo
           for f in *; do
             case "$f" in
