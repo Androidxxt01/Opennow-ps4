@@ -36,7 +36,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <netinet/sctp_os.h>
-#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__SWITCH__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__SWITCH__) && !defined(__PS4__)
 #include <sys/uio.h>
 #else
 #include <user_ip6_var.h>

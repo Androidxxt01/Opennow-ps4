@@ -32,7 +32,9 @@
 
 #ifndef _USER_SOCKETVAR_H_
 #define _USER_SOCKETVAR_H_
+#if !defined(__PS4__)
 #define __SWITCH__ 1
+#endif
 
 #if defined(__APPLE__)
 #include <sys/types.h>
@@ -43,7 +45,7 @@
 /* #include <sys/_lock.h>  was 0 byte file */
 /* #include <sys/_mutex.h> was 0 byte file */
 /* #include <sys/_sx.h> */ /*__Userspace__ alternative?*/
-#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(_WIN32) && !defined(__native_client__) && !defined(__SWITCH__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(_WIN32) && !defined(__native_client__) && !defined(__SWITCH__) && !defined(__PS4__)
 #include <sys/uio.h>
 #endif
 #define SOCK_MAXADDRLEN 255

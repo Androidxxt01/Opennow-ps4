@@ -30,7 +30,7 @@
 
 #ifndef _USER_ENVIRONMENT_H_
 #define _USER_ENVIRONMENT_H_
-#if defined(__SWITCH__)
+#if defined(__SWITCH__) || defined(__PS4__)
 #define _POSIX_C_SOURCE 200809L
 #endif
 /* __Userspace__ */

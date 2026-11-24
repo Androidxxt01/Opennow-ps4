@@ -464,13 +464,13 @@ struct sx {int dummy;};
 #if !defined(_WIN32) && !defined(__native_client__)
 #include <net/if.h>
 #include <netinet/in.h>
-#if !defined(__SWITCH__)
+#if !defined(__SWITCH__) && !defined(__PS4__)
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #endif
 #endif
 
-#if defined(__SWITCH__)
+#if defined(__SWITCH__) || defined(__PS4__)
 struct in6_addr {
     union {
         uint8_t  __u6_addr8[16];
@@ -600,7 +600,7 @@ struct ip {
 #include <sys/types.h>
 #if !defined(_WIN32)
 #if defined(INET) || defined(INET6)
-#if !defined(__SWITCH__)
+#if !defined(__SWITCH__) && !defined(__PS4__)
 #include <ifaddrs.h>
 #endif
 #endif

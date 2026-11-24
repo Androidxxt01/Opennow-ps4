@@ -33,12 +33,14 @@
 /* This file has been renamed user_malloc.h for Userspace */
 #ifndef _USER_MALLOC_H_
 #define	_USER_MALLOC_H_
+#if !defined(__PS4__)
 #define __SWITCH__ 1
+#endif
 
 /*__Userspace__*/
 #include <stdlib.h>
 #include <sys/types.h>
-#if defined(__Userspace_os_Windows) || defined(__SWITCH__)
+#if defined(__Userspace_os_Windows) || defined(__SWITCH__) || defined(__PS4__)
 typedef unsigned int u_int;
 typedef unsigned long u_long;
 typedef unsigned short u_short;

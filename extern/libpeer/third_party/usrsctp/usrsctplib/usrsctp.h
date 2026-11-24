@@ -121,7 +121,7 @@ struct sctp_common_header {
  */
 #if defined(__APPLE__) || defined(__Bitrig__) || defined(__DragonFly__) || \
     defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
-    defined(__SWITCH__)
+    defined(__SWITCH__) || defined(__PS4__)
 struct sockaddr_conn {
 	uint8_t sconn_len;
 	uint8_t sconn_family;

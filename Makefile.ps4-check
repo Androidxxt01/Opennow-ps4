@@ -1,0 +1,58 @@
+ROOT := $(abspath .)
+OPENORBIS ?= /opt/OpenOrbis-PS4-Toolchain
+CC = clang
+CXX = clang++
+JANSSON_INCLUDE ?= $(OPENORBIS)/include
+BUILD_DIR ?= build/ps4-check
+TARGET := --target=x86_64-pc-freebsd12-elf
+COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
+	-I$(ROOT)/app/src -I$(ROOT)/extern/libpeer/src \
+	-I$(ROOT)/extern/ffmpeg/include \
+	-I$(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib \
+	-I$(ROOT)/extern/libpeer/third_party/mbedtls/include \
+	-I$(JANSSON_INCLUDE) -nostdlibinc -isystem $(OPENORBIS)/include
+CFLAGS ?= -std=c11 -Wall -Wextra
+CXXFLAGS ?= -std=c++20 -Wall -Wextra
+
+USRSCTP_DIR := $(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib
+USRSCTP_SOURCES := \
+	$(USRSCTP_DIR)/netinet/sctp_asconf.c \
+	$(USRSCTP_DIR)/netinet/sctp_auth.c \
+	$(USRSCTP_DIR)/netinet/sctp_bsd_addr.c \
+	$(USRSCTP_DIR)/netinet/sctp_callout.c \
+	$(USRSCTP_DIR)/netinet/sctp_cc_functions.c \
+	$(USRSCTP_DIR)/netinet/sctp_crc32.c \
+	$(USRSCTP_DIR)/netinet/sctp_indata.c \
+	$(USRSCTP_DIR)/netinet/sctp_input.c \
+	$(USRSCTP_DIR)/netinet/sctp_output.c \
+	$(USRSCTP_DIR)/netinet/sctp_pcb.c \
+	$(USRSCTP_DIR)/netinet/sctp_peeloff.c \
+	$(USRSCTP_DIR)/netinet/sctp_sha1.c \
+	$(USRSCTP_DIR)/netinet/sctp_ss_functions.c \
+	$(USRSCTP_DIR)/netinet/sctp_sysctl.c \
+	$(USRSCTP_DIR)/netinet/sctp_timer.c \
+	$(USRSCTP_DIR)/netinet/sctp_userspace.c \
+	$(USRSCTP_DIR)/netinet/sctp_usrreq.c \
+	$(USRSCTP_DIR)/netinet/sctputil.c \
+	$(USRSCTP_DIR)/netinet6/sctp6_usrreq.c \
+	$(USRSCTP_DIR)/user_environment.c \
+	$(USRSCTP_DIR)/user_mbuf.c \
+	$(USRSCTP_DIR)/user_recv_thread.c \
+	$(USRSCTP_DIR)/user_socket.c
+GFN_SOURCES := $(wildcard $(ROOT)/app/src/gfn/*.cpp)
+SOURCES := $(USRSCTP_SOURCES) $(GFN_SOURCES)
+OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(SOURCES))
+
+.PHONY: all clean
+all: $(OBJECTS)
+
+$(BUILD_DIR)/%.c.o: $(ROOT)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(COMMON_FLAGS) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(BUILD_DIR)
