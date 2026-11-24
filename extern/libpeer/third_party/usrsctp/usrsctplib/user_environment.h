@@ -36,7 +36,7 @@
 /* __Userspace__ */
 #include <sys/types.h>
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(__PS4__)
 #ifndef _SYS_MUTEX_H_
 #include <sys/mutex.h>
 #endif

@@ -405,7 +405,7 @@ int win_if_nametoindex(const char *);
 #define mtx_unlock(arg1)
 #define mtx_assert(arg1,arg2)
 #define MA_OWNED 7 /* sys/mutex.h typically on FreeBSD */
-#if !defined(__FreeBSD__)
+#if !defined(__FreeBSD__) || defined(__PS4__)
 struct mtx {int dummy;};
 #if !defined(__NetBSD__)
 struct selinfo {int dummy;};
@@ -453,7 +453,7 @@ struct sx {int dummy;};
 /* was a 0 byte file.  needed for structs if_data(64) and net_event_data */
 #include <net/if_var.h>
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) && !defined(__PS4__)
 #include <net/if_types.h>
 /* #include <net/if_var.h> was a 0 byte file.  causes struct mtx redefinition */
 #endif
@@ -630,7 +630,7 @@ struct ip {
 #endif				/* IPSEC */
 
 #ifdef INET6
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) && !defined(__PS4__)
 #include <sys/domain.h>
 #endif
 #ifdef IPSEC
@@ -639,12 +639,12 @@ struct ip {
 #if !defined(_WIN32)
 #include <netinet/ip6.h>
 #endif
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__linux__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(_WIN32) || defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__PS4__) || defined(__linux__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(_WIN32) || defined(__EMSCRIPTEN__)
 #include "user_ip6_var.h"
 #else
 #include <netinet6/ip6_var.h>
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) && !defined(__PS4__)
 #include <netinet6/in6_pcb.h>
 #include <netinet6/ip6protosw.h>
 /* #include <netinet6/nd6.h> was a 0 byte file */
