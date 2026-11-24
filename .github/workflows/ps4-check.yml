@@ -33,9 +33,17 @@ jobs:
           OO=$(find /tmp/oo -name errno.h -path '*include*' -print -quit | sed 's|/include/.*||')
           echo "OPENORBIS=$OO" >> "$GITHUB_ENV"
           echo "SDK em: $OO"
+          if [ -z "$OO" ]; then
+            echo "::error::OpenOrbis SDK nao encontrado: errno.h nao localizado"
+            exit 1
+          fi
+          find "$OO" -maxdepth 2 | head -30
 
       - name: Check de compilacao
-        run: make -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/usr/include 2>&1 | tee check.log
+        shell: bash
+        run: |
+          set -o pipefail
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/usr/include 2>&1 | tee check.log
 
       - uses: actions/upload-artifact@v4
         if: always()
