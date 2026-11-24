@@ -39,11 +39,16 @@ jobs:
           fi
           find "$OO" -maxdepth 2 | head -30
 
+      - name: Isolar headers do Jansson
+        run: |
+          mkdir -p /tmp/jansson-inc && cp /usr/include/jansson.h /usr/include/x86_64-linux-gnu/jansson_config.h /tmp/jansson-inc/ 2>/dev/null || cp /usr/include/jansson_config.h /tmp/jansson-inc/
+          ls -l /tmp/jansson-inc
+
       - name: Check de compilacao
         shell: bash
         run: |
           set -o pipefail
-          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/usr/include 2>&1 | tee check.log
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc 2>&1 | tee check.log
 
       - uses: actions/upload-artifact@v4
         if: always()
