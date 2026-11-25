@@ -59,6 +59,7 @@ WEBRTC_DIR := $(ROOT)/app/src/webrtc
 LIBPEER_SOURCES := $(wildcard $(LIBPEER_DIR)/*.c)
 SRTP_HEADER := $(BUILD_DIR)/include/srtp2/srtp.h
 LIBPEER_INCLUDE_FLAGS := -I$(ROOT)/extern/libpeer/third_party/cJSON \
+	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/include \
 	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/interface \
 	-I$(BUILD_DIR)/include
 WEBRTC_INCLUDE_FLAGS := -I$(ROOT)/extern/borealis/library/include/borealis/extern/nanovg
