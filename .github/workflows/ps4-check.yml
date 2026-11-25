@@ -158,7 +158,6 @@ jobs:
           /tmp/random_string_test
 
       - name: Check de link (simbolos ausentes)
-        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
