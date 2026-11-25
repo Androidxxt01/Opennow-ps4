@@ -1,0 +1,34 @@
+name: entropy-test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [proposta-entropia]
+
+jobs:
+  unseeded-drbg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar mbedtls (config do Switch) e teste
+        run: |
+          mkdir -p build/entropy-test
+          MBEDTLS=extern/libpeer/third_party/mbedtls/library
+          cc -Iextern/libpeer/third_party/mbedtls/include \
+             tests/host/ctr_drbg_unseeded.c \
+             $MBEDTLS/{aes,aesce,ctr_drbg,entropy,sha256,sha512,sha1,ripemd160,md,md5,bignum,bignum_core,platform_util,constant_time}.c \
+             -o build/entropy-test/ctr_drbg_unseeded
+
+      - name: Execucao 1
+        run: build/entropy-test/ctr_drbg_unseeded | tee /tmp/entropy-run1.txt
+
+      - name: Execucao 2 e comparacao
+        run: |
+          build/entropy-test/ctr_drbg_unseeded | tee /tmp/entropy-run2.txt
+          seed=$(grep '^seed=' /tmp/entropy-run1.txt)
+          if cmp -s /tmp/entropy-run1.txt /tmp/entropy-run2.txt; then
+            echo "::notice::IGUAIS ($seed)"
+          else
+            echo "::error::DIFERENTES ($seed)"
+          fi
