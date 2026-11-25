@@ -13,8 +13,8 @@ COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
 	-I$(JANSSON_INCLUDE) -nostdlibinc
 C_INCLUDE_FLAGS := -isystem $(OPENORBIS)/include
 CXX_INCLUDE_FLAGS := -nostdinc++ -isystem $(LIBCXX_INCLUDE) $(C_INCLUDE_FLAGS)
-CFLAGS ?= -std=c11 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
-CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
+CFLAGS ?= -std=c11 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -DMQTT_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
+CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -DMQTT_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
 
 USRSCTP_DIR := $(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib
 # O alvo freebsd12 define __FreeBSD__ por padrao; usrsctp precisa do caminho
@@ -61,6 +61,8 @@ SRTP_HEADER := $(BUILD_DIR)/include/srtp2/srtp.h
 LIBPEER_INCLUDE_FLAGS := -I$(ROOT)/extern/libpeer/third_party/cJSON \
 	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/include \
 	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/interface \
+	-I$(ROOT)/extern/libpeer/third_party/coreMQTT/source/include \
+	-I$(ROOT)/extern/libpeer/third_party/coreMQTT/source/interface \
 	-I$(BUILD_DIR)/include
 WEBRTC_INCLUDE_FLAGS := -I$(ROOT)/extern/borealis/library/include/borealis/extern/nanovg
 USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
