@@ -95,12 +95,22 @@ WEBRTC_INCLUDE_FLAGS := -I$(ROOT)/extern/borealis/library/include/borealis/exter
 MBEDTLS_DIR := $(ROOT)/extern/libpeer/third_party/mbedtls
 MBEDTLS_LIBRARY_DIR := $(MBEDTLS_DIR)/library
 MBEDTLS_GEN_DIR := $(BUILD_DIR)/mbedtls-generated
+MBEDTLS_SCRIPTS := $(MBEDTLS_DIR)/scripts
 MBEDTLS_CONFIG_DEFINE := -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
 SSL_DEBUG_HELPERS := $(MBEDTLS_GEN_DIR)/ssl_debug_helpers_generated.c
+PSA_DRIVER_WRAPPERS := $(MBEDTLS_GEN_DIR)/psa_crypto_driver_wrappers.c
+PYTHON ?= python3
+PSA_GEN_AVAILABLE := $(shell PYTHONPATH=$(MBEDTLS_SCRIPTS) $(PYTHON) -c 'import jinja2,jsonschema,mbedtls_dev.build_tree' >/dev/null 2>&1 && echo yes)
 MBEDTLS_SOURCES := $(filter-out \
 	$(MBEDTLS_LIBRARY_DIR)/psa_crypto%.c \
 	$(MBEDTLS_LIBRARY_DIR)/psa_its_file.c, \
 	$(wildcard $(MBEDTLS_LIBRARY_DIR)/*.c))
+ifeq ($(PSA_GEN_AVAILABLE),yes)
+MBEDTLS_SOURCES := $(filter-out \
+	$(MBEDTLS_LIBRARY_DIR)/psa_crypto_driver_wrappers.c, \
+	$(wildcard $(MBEDTLS_LIBRARY_DIR)/*.c))
+MBEDTLS_SOURCES += $(PSA_DRIVER_WRAPPERS)
+endif
 MBEDTLS_SOURCES += $(ROOT)/extern/libpeer/src/ps4_mbedtls_entropy.c $(SSL_DEBUG_HELPERS)
 USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
 GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
@@ -108,7 +118,7 @@ WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
 LIBPEER_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(LIBPEER_SOURCES))
 SRTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(SRTP_SOURCES))
 MBEDTLS_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/mbedtls/%.o,$(filter $(ROOT)/%,$(MBEDTLS_SOURCES))) \
-	$(BUILD_DIR)/mbedtls/ssl_debug_helpers_generated.c.o
+	$(patsubst $(MBEDTLS_GEN_DIR)/%,$(BUILD_DIR)/mbedtls/generated/%.o,$(filter $(MBEDTLS_GEN_DIR)/%,$(MBEDTLS_SOURCES)))
 MBEDTLS_ARCHIVE := $(BUILD_DIR)/libmbedtls-check.a
 OPENORBIS_LIBS := -L$(OPENORBIS)/lib -lc -lkernel -lSceNet -lSceNetCtl \
 	-lScePosix -lSceLibcInternal -lc++ -lc++abi -lc++experimental
@@ -154,13 +164,21 @@ $(SRTP_ARCHIVE): $(SRTP_OBJECTS)
 
 $(SSL_DEBUG_HELPERS):
 	@mkdir -p $(dir $@)
-	python3 $(MBEDTLS_DIR)/scripts/generate_ssl_debug_helpers.py --mbedtls-root $(MBEDTLS_DIR) $(MBEDTLS_GEN_DIR)
+	$(PYTHON) $(MBEDTLS_DIR)/scripts/generate_ssl_debug_helpers.py --mbedtls-root $(MBEDTLS_DIR) $(MBEDTLS_GEN_DIR)
+
+$(PSA_DRIVER_WRAPPERS):
+	@mkdir -p $(dir $@)
+	PYTHONPATH=$(MBEDTLS_SCRIPTS) $(PYTHON) $(MBEDTLS_DIR)/scripts/generate_driver_wrappers.py $(MBEDTLS_GEN_DIR)
 
 $(BUILD_DIR)/mbedtls/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -w -c $< -o $@
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -I$(MBEDTLS_LIBRARY_DIR) -w -c $< -o $@
 
 $(BUILD_DIR)/mbedtls/ssl_debug_helpers_generated.c.o: $(SSL_DEBUG_HELPERS)
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -I$(MBEDTLS_LIBRARY_DIR) -I$(MBEDTLS_GEN_DIR) -w -c $< -o $@
+
+$(BUILD_DIR)/mbedtls/generated/%.c.o: $(MBEDTLS_GEN_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -I$(MBEDTLS_LIBRARY_DIR) -I$(MBEDTLS_GEN_DIR) -w -c $< -o $@
 

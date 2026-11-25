@@ -12,7 +12,7 @@ jobs:
           submodules: recursive
 
       - name: Dependencias
-        run: sudo apt-get update && sudo apt-get install -y clang lld libjansson-dev unzip
+        run: sudo apt-get update && sudo apt-get install -y clang lld libjansson-dev unzip python3-jinja2 python3-jsonschema
 
       - name: OpenOrbis SDK
         env:
