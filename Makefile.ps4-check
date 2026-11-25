@@ -2,7 +2,8 @@ ROOT := $(abspath .)
 OPENORBIS ?= /opt/OpenOrbis-PS4-Toolchain
 CC = clang
 CXX = clang++
-LD ?= ld.lld
+LD := ld.lld
+AR ?= llvm-ar
 BUILD_DIR ?= build/ps4-check
 JANSSON_DIR ?= $(CURDIR)/$(BUILD_DIR)/jansson
 JANSSON_SRC_DIR := $(JANSSON_DIR)/src
@@ -161,15 +162,15 @@ $(LINK_MAIN_OBJECT): $(LINK_MAIN)
 	$(CXX) -x c++ $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/libusrsctp-check.a: $(USRSCTP_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 $(BUILD_DIR)/libgfn-check.a: $(GFN_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 $(BUILD_DIR)/libwebrtc-check.a: $(WEBRTC_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 $(BUILD_DIR)/liblibpeer-check.a: $(LIBPEER_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 $(SRTP_ARCHIVE): $(SRTP_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 
 $(SSL_DEBUG_HELPERS):
 	@mkdir -p $(dir $@)
@@ -192,7 +193,7 @@ $(BUILD_DIR)/mbedtls/generated/%.c.o: $(MBEDTLS_GEN_DIR)/%.c
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -I$(MBEDTLS_LIBRARY_DIR) -I$(MBEDTLS_GEN_DIR) -w -c $< -o $@
 
 $(MBEDTLS_ARCHIVE): $(MBEDTLS_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 
 $(JANSSON_PRIVATE_CONFIG): $(JANSSON_DIR)/jansson_private_config.h.in
 	@mkdir -p $(dir $@)
@@ -245,7 +246,7 @@ $(BUILD_DIR)/jansson/%.c.o: $(JANSSON_SRC_DIR)/%.c $(JANSSON_PRIVATE_CONFIG) $(J
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) -DHAVE_CONFIG_H -I$(JANSSON_DIR) -I$(JANSSON_SRC_DIR) -w -c $< -o $@
 
 $(JANSSON_ARCHIVE): $(JANSSON_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
 
 $(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
 	$(LD) -m elf_x86_64 -pie --script $(OPENORBIS)/link.x --eh-frame-hdr \

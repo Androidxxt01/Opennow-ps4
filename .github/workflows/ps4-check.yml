@@ -12,7 +12,12 @@ jobs:
           submodules: recursive
 
       - name: Dependencias
-        run: sudo apt-get update && sudo apt-get install -y clang lld unzip python3-jinja2 python3-jsonschema curl
+        run: sudo apt-get update && sudo apt-get install -y clang lld llvm unzip python3-jinja2 python3-jsonschema curl
+
+      - name: Versao do linker
+        run: |
+          command -v ld.lld
+          ld.lld --version
 
       - name: OpenOrbis SDK
         env:
@@ -161,6 +166,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          command -v ld.lld
           make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" LIBCXX_INCLUDE="$LIBCXX_INCLUDE" link 2>&1 | tee link.log
 
       - uses: actions/upload-artifact@v4
