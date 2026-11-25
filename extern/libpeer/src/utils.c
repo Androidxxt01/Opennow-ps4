@@ -3,22 +3,79 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "mbedtls/md.h"
+
+#if defined(__PS4__)
+#include "ps4_entropy.h"
+#elif defined(__SWITCH__)
+#include <switch.h>
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#if defined(__linux__) || defined(__FreeBSD__)
+#include <sys/random.h>
+#endif
+#endif
+
+static int utils_secure_random(void* buf, size_t len) {
+#if defined(__PS4__)
+  return ps4_entropy_fill((unsigned char*)buf, len);
+#elif defined(__SWITCH__)
+  randomGet(buf, len);
+  return 0;
+#elif defined(__linux__) || defined(__FreeBSD__)
+  size_t off = 0;
+  while (off < len) {
+    ssize_t n = getrandom((unsigned char*)buf + off, len - off, 0);
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) return -1;
+    off += (size_t)n;
+  }
+  return 0;
+#else
+  int fd = open("/dev/urandom", O_RDONLY);
+  size_t off = 0;
+  if (fd < 0) return -1;
+  while (off < len) {
+    ssize_t n = read(fd, (unsigned char*)buf + off, len - off);
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) { close(fd); return -1; }
+    off += (size_t)n;
+  }
+  close(fd);
+  return 0;
+#endif
+}
 
 void utils_random_string(char* s, const int len) {
   int i;
+  unsigned char* rnd;
 
   static const char alphanum[] =
       "0123456789"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "abcdefghijklmnopqrstuvwxyz";
+  const size_t n = sizeof(alphanum) - 1;
 
-  srand(time(NULL));
+  if (len <= 0) {
+    if (s) s[0] = '\0';
+    return;
+  }
+
+  rnd = (unsigned char*)malloc((size_t)len);
+  if (rnd == NULL) {
+    abort();
+  }
+  if (utils_secure_random(rnd, (size_t)len) != 0) {
+    free(rnd);
+    abort();
+  }
 
   for (i = 0; i < len; ++i) {
-    s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+    s[i] = alphanum[rnd[i] % n];
   }
+  free(rnd);
 
   s[len] = '\0';
 }

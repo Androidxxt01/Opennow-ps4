@@ -85,7 +85,12 @@ static int dtls_srtp_selfsign_cert(DtlsSrtp* dtls_srtp) {
     return -1;
   }
 
-  mbedtls_ctr_drbg_seed(&dtls_srtp->ctr_drbg, mbedtls_entropy_func, &dtls_srtp->entropy, (const unsigned char*)pers, strlen(pers));
+  ret = mbedtls_ctr_drbg_seed(&dtls_srtp->ctr_drbg, mbedtls_entropy_func, &dtls_srtp->entropy, (const unsigned char*)pers, strlen(pers));
+  if (ret != 0) {
+    LOGE("mbedtls_ctr_drbg_seed failed: -0x%.4x", (unsigned int)-ret);
+    free(cert_buf);
+    return ret;
+  }
 
 #if CONFIG_DTLS_USE_ECDSA
   mbedtls_pk_setup(&dtls_srtp->pkey, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
@@ -146,6 +151,7 @@ static void dtls_srtp_debug(void* ctx, int level, const char* file, int line, co
 #endif
 
 int dtls_srtp_init(DtlsSrtp* dtls_srtp, DtlsSrtpRole role, void* user_data) {
+  int ret;
   static const mbedtls_ssl_srtp_profile default_profiles[] = {
       MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
       MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
@@ -170,7 +176,11 @@ int dtls_srtp_init(DtlsSrtp* dtls_srtp, DtlsSrtpRole role, void* user_data) {
   mbedtls_debug_set_threshold(3);
   mbedtls_ssl_conf_dbg(&dtls_srtp->conf, dtls_srtp_debug, NULL);
 #endif
-  dtls_srtp_selfsign_cert(dtls_srtp);
+  ret = dtls_srtp_selfsign_cert(dtls_srtp);
+  if (ret != 0) {
+    LOGE("dtls_srtp_selfsign_cert failed: -0x%.4x", (unsigned int)-ret);
+    return ret;
+  }
 
   mbedtls_ssl_conf_verify(&dtls_srtp->conf, dtls_srtp_cert_verify, NULL);
 
