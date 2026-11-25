@@ -85,7 +85,15 @@ static int dtls_srtp_selfsign_cert(DtlsSrtp* dtls_srtp) {
     return -1;
   }
 
+#if defined(__PS4__)
+  if ((ret = mbedtls_ctr_drbg_seed(&dtls_srtp->ctr_drbg, mbedtls_entropy_func, &dtls_srtp->entropy, (const unsigned char*)pers, strlen(pers))) != 0) {
+    LOGE("ctr_drbg_seed failed -0x%.4x", (unsigned int)-ret);
+    free(cert_buf);
+    return ret;
+  }
+#else
   mbedtls_ctr_drbg_seed(&dtls_srtp->ctr_drbg, mbedtls_entropy_func, &dtls_srtp->entropy, (const unsigned char*)pers, strlen(pers));
+#endif
 
 #if CONFIG_DTLS_USE_ECDSA
   mbedtls_pk_setup(&dtls_srtp->pkey, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));

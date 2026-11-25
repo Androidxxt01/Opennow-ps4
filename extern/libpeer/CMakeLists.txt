@@ -18,6 +18,7 @@ endif()
 
 project(peer)
 
+option(OPENNOW_PS4 "Build libpeer for OpenOrbis PS4" OFF)
 option(ENABLE_TESTS "Enable tests" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(ADDRESS_SANITIZER "Build with AddressSanitizer." OFF)
@@ -90,14 +91,14 @@ ExternalProject_Add(mbedtls
     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dist
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 )
-# Apply Switch-oriented mbedtls overrides once. The previous unconditional
+# Apply in-tree mbedtls overrides once. The previous unconditional
 # append rewrote mbedtls_config.h on every configure and broke rebuilds.
 set(_OPENNOW_MBEDTLS_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/include/mbedtls/mbedtls_config.h")
 set(_OPENNOW_MBEDTLS_MARKER "/* OpenNOW Switch mbedtls overrides */")
 file(READ "${_OPENNOW_MBEDTLS_CONFIG}" INPUT_CONTENT)
 if(NOT INPUT_CONTENT MATCHES "OpenNOW Switch mbedtls overrides")
   string(REPLACE "//#define MBEDTLS_SSL_DTLS_SRTP" "#define MBEDTLS_SSL_DTLS_SRTP" MODIFIED_CONTENT "${INPUT_CONTENT}")
-  file(WRITE "${_OPENNOW_MBEDTLS_CONFIG}" "${MODIFIED_CONTENT}\n${_OPENNOW_MBEDTLS_MARKER}\n#define MBEDTLS_NO_PLATFORM_ENTROPY\n#define MBEDTLS_TEST_NULL_ENTROPY\n#undef MBEDTLS_TIMING_C\n#undef MBEDTLS_NET_C\n")
+  file(WRITE "${_OPENNOW_MBEDTLS_CONFIG}" "${MODIFIED_CONTENT}\n${_OPENNOW_MBEDTLS_MARKER}\n#define MBEDTLS_NO_PLATFORM_ENTROPY\n#undef MBEDTLS_TIMING_C\n#undef MBEDTLS_NET_C\n#if defined(__PS4__)\n#define MBEDTLS_ENTROPY_HARDWARE_ALT\n#endif\n")
 endif()
 
 ExternalProject_Add(srtp2
@@ -118,6 +119,7 @@ ExternalProject_Add(usrsctp
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     -Dsctp_build_programs=off
     -Dsctp_inet6=0
+    -DOPENNOW_PS4=${OPENNOW_PS4}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dist
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 )

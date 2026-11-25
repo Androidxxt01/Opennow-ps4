@@ -59,6 +59,10 @@ add_definitions(-D__Userspace__)
 add_definitions(-DSCTP_SIMPLE_ALLOCATOR)
 add_definitions(-DSCTP_PROCESS_LEVEL_LOCKS)
 
+if(OPENNOW_PS4)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../src)
+endif()
+
 if(SCTP_USE_MBEDTLS_SHA1)
 	add_definitions(-DSCTP_USE_MBEDTLS_SHA1)
 	find_package(MbedTLS REQUIRED)
