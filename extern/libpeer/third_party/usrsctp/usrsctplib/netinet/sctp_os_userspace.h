@@ -471,6 +471,7 @@ struct sx {int dummy;};
 #endif
 
 #if defined(__SWITCH__) || defined(__PS4__)
+#if defined(__SWITCH__) /* OpenOrbis ja fornece estes tipos/funcoes */
 struct in6_addr {
     union {
         uint8_t  __u6_addr8[16];
@@ -499,6 +500,7 @@ static inline int getifaddrs(struct ifaddrs **ifap) { return -1; }
 static inline void freeifaddrs(struct ifaddrs *ifa) { (void)ifa; }
 static inline unsigned int if_nametoindex(const char *ifname) { (void)ifname; return 0; }
 static inline char *if_indextoname(unsigned int ifindex, char *ifname) { (void)ifindex; (void)ifname; return NULL; }
+#endif /* __SWITCH__ */
 
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40
@@ -524,6 +526,7 @@ static inline char *if_indextoname(unsigned int ifindex, char *ifname) { (void)i
 #define IP_HDRINCL 3
 #endif
 
+#if defined(__SWITCH__) /* OpenOrbis ja fornece struct ifreq */
 struct ifreq {
     char ifr_name[IF_NAMESIZE];
     union {
@@ -534,6 +537,7 @@ struct ifreq {
     } ifr_ifru;
 };
 #define ifr_mtu ifr_ifru.ifru_mtu
+#endif /* __SWITCH__ */
 
 #include <arpa/inet.h>
 #define IPVERSION 4
