@@ -2,7 +2,9 @@ ROOT := $(abspath .)
 OPENORBIS ?= /opt/OpenOrbis-PS4-Toolchain
 CC = clang
 CXX = clang++
-JANSSON_INCLUDE ?= $(OPENORBIS)/include
+JANSSON_DIR ?= $(BUILD_DIR)/jansson
+JANSSON_SRC_DIR := $(JANSSON_DIR)/src
+JANSSON_INCLUDE ?= $(JANSSON_SRC_DIR)
 BUILD_DIR ?= build/ps4-check
 TARGET := --target=x86_64-pc-freebsd12-elf
 COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
@@ -120,6 +122,11 @@ SRTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(SRTP_SOURCES))
 MBEDTLS_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/mbedtls/%.o,$(filter $(ROOT)/%,$(MBEDTLS_SOURCES))) \
 	$(patsubst $(MBEDTLS_GEN_DIR)/%,$(BUILD_DIR)/mbedtls/generated/%.o,$(filter $(MBEDTLS_GEN_DIR)/%,$(MBEDTLS_SOURCES)))
 MBEDTLS_ARCHIVE := $(BUILD_DIR)/libmbedtls-check.a
+JANSSON_SOURCES := $(wildcard $(JANSSON_SRC_DIR)/*.c)
+JANSSON_OBJECTS := $(patsubst $(JANSSON_SRC_DIR)/%,$(BUILD_DIR)/jansson/%.o,$(JANSSON_SOURCES))
+JANSSON_ARCHIVE := $(BUILD_DIR)/libjansson-check.a
+JANSSON_PRIVATE_CONFIG := $(JANSSON_DIR)/jansson_private_config.h
+JANSSON_PUBLIC_CONFIG := $(JANSSON_SRC_DIR)/jansson_config.h
 OPENORBIS_LIBS := -L$(OPENORBIS)/lib -lc -lkernel -lSceNet -lSceNetCtl \
 	-lScePosix -lSceLibcInternal -lc++ -lc++abi -lc++experimental
 LINK_MAIN := $(ROOT)/tests/ps4/link_main.c
@@ -130,7 +137,8 @@ LINK_ARCHIVES := \
 	$(BUILD_DIR)/libwebrtc-check.a \
 	$(BUILD_DIR)/liblibpeer-check.a \
 	$(SRTP_ARCHIVE) \
-	$(MBEDTLS_ARCHIVE)
+	$(MBEDTLS_ARCHIVE) \
+	$(JANSSON_ARCHIVE)
 LINK_TARGET := $(BUILD_DIR)/ps4-link-check
 
 .PHONY: all usrsctp gfn webrtc libpeer srtp mbedtls link clean
@@ -185,6 +193,59 @@ $(BUILD_DIR)/mbedtls/generated/%.c.o: $(MBEDTLS_GEN_DIR)/%.c
 $(MBEDTLS_ARCHIVE): $(MBEDTLS_OBJECTS)
 	ar rcs $@ $^
 
+$(JANSSON_PRIVATE_CONFIG): $(JANSSON_DIR)/jansson_private_config.h.in
+	@mkdir -p $(dir $@)
+	sed \
+		-e 's/#undef HAVE_ATOMIC_BUILTINS/#define HAVE_ATOMIC_BUILTINS 1/' \
+		-e 's/#undef HAVE_CLOSE/#define HAVE_CLOSE 1/' \
+		-e 's/#undef HAVE_FCNTL_H/#define HAVE_FCNTL_H 1/' \
+		-e 's/#undef HAVE_GETPID/#define HAVE_GETPID 1/' \
+		-e 's/#undef HAVE_GETTIMEOFDAY/#define HAVE_GETTIMEOFDAY 1/' \
+		-e 's/#undef HAVE_INTTYPES_H/#define HAVE_INTTYPES_H 1/' \
+		-e 's/#undef HAVE_LOCALECONV/#define HAVE_LOCALECONV 1/' \
+		-e 's/#undef HAVE_LOCALE_H/#define HAVE_LOCALE_H 1/' \
+		-e 's/#undef HAVE_LONG_LONG_INT/#define HAVE_LONG_LONG_INT 1/' \
+		-e 's/#undef HAVE_MEMORY_H/#define HAVE_MEMORY_H 1/' \
+		-e 's/#undef HAVE_OPEN/#define HAVE_OPEN 1/' \
+		-e 's/#undef HAVE_READ/#define HAVE_READ 1/' \
+		-e 's/#undef HAVE_SCHED_H/#define HAVE_SCHED_H 1/' \
+		-e 's/#undef HAVE_SCHED_YIELD/#define HAVE_SCHED_YIELD 1/' \
+		-e 's/#undef HAVE_STDINT_H/#define HAVE_STDINT_H 1/' \
+		-e 's/#undef HAVE_STDLIB_H/#define HAVE_STDLIB_H 1/' \
+		-e 's/#undef HAVE_STRINGS_H/#define HAVE_STRINGS_H 1/' \
+		-e 's/#undef HAVE_STRING_H/#define HAVE_STRING_H 1/' \
+		-e 's/#undef HAVE_STRTOLL/#define HAVE_STRTOLL 1/' \
+		-e 's/#undef HAVE_SYNC_BUILTINS/#define HAVE_SYNC_BUILTINS 1/' \
+		-e 's/#undef HAVE_SYS_PARAM_H/#define HAVE_SYS_PARAM_H 1/' \
+		-e 's/#undef HAVE_SYS_STAT_H/#define HAVE_SYS_STAT_H 1/' \
+		-e 's/#undef HAVE_SYS_TIME_H/#define HAVE_SYS_TIME_H 1/' \
+		-e 's/#undef HAVE_SYS_TYPES_H/#define HAVE_SYS_TYPES_H 1/' \
+		-e 's/#undef HAVE_UNISTD_H/#define HAVE_UNISTD_H 1/' \
+		-e 's/#undef HAVE_UNSIGNED_LONG_LONG_INT/#define HAVE_UNSIGNED_LONG_LONG_INT 1/' \
+		-e 's/#undef INITIAL_HASHTABLE_ORDER/#define INITIAL_HASHTABLE_ORDER 3/' \
+		-e 's/#undef STDC_HEADERS/#define STDC_HEADERS 1/' \
+		-e 's/#undef USE_URANDOM/\/* #undef USE_URANDOM *\//' \
+		-e 's/#undef USE_WINDOWS_CRYPTOAPI/\/* #undef USE_WINDOWS_CRYPTOAPI *\//' \
+		-e 's/#undef inline//g' \
+		$< > $@
+
+$(JANSSON_PUBLIC_CONFIG): $(JANSSON_SRC_DIR)/jansson_config.h.in
+	@mkdir -p $(dir $@)
+	sed \
+		-e 's/@json_inline@/inline/' \
+		-e 's/@json_have_long_long@/1/' \
+		-e 's/@json_have_localeconv@/1/' \
+		-e 's/@json_have_atomic_builtins@/1/' \
+		-e 's/@json_have_sync_builtins@/1/' \
+		$< > $@
+
+$(BUILD_DIR)/jansson/%.c.o: $(JANSSON_SRC_DIR)/%.c $(JANSSON_PRIVATE_CONFIG) $(JANSSON_PUBLIC_CONFIG)
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) -DHAVE_CONFIG_H -I$(JANSSON_DIR) -I$(JANSSON_SRC_DIR) -w -c $< -o $@
+
+$(JANSSON_ARCHIVE): $(JANSSON_OBJECTS)
+	ar rcs $@ $^
+
 $(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
 	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
 		-fuse-ld=lld -nostdlib \
@@ -228,7 +289,7 @@ $(SRTP_CONFIG): $(SRTP_TEMPLATE)
 		{print} \
 	' $< > $@
 
-$(BUILD_DIR)/%.c.o: $(ROOT)/%.c
+$(BUILD_DIR)/%.c.o: $(ROOT)/%.c $(JANSSON_PUBLIC_CONFIG)
 	@mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) \
 		$(if $(filter $(USRSCTP_DIR)/%,$<),$(USRSCTP_CFLAGS)) \
@@ -236,7 +297,7 @@ $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 		$(if $(filter $(SRTP_DIR)/%,$<),$(SRTP_CFLAGS)) \
 		-c $< -o $@
 
-$(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
+$(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp $(JANSSON_PUBLIC_CONFIG)
 	@mkdir -p $(dir $@)
 	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
 		$(if $(filter $(WEBRTC_DIR)/%,$<),$(WEBRTC_INCLUDE_FLAGS)) \

@@ -12,7 +12,7 @@ jobs:
           submodules: recursive
 
       - name: Dependencias
-        run: sudo apt-get update && sudo apt-get install -y clang lld libjansson-dev unzip python3-jinja2 python3-jsonschema
+        run: sudo apt-get update && sudo apt-get install -y clang lld unzip python3-jinja2 python3-jsonschema curl
 
       - name: OpenOrbis SDK
         env:
@@ -130,10 +130,18 @@ jobs:
           echo "=== sys/random.h (60) ==="
           head -60 /tmp/rng_sysrandom.txt
 
-      - name: Isolar headers do Jansson
+      - name: Baixar Jansson 2.11
+        shell: bash
         run: |
-          mkdir -p /tmp/jansson-inc && cp /usr/include/jansson.h /usr/include/x86_64-linux-gnu/jansson_config.h /tmp/jansson-inc/ 2>/dev/null || cp /usr/include/jansson_config.h /tmp/jansson-inc/
-          ls -l /tmp/jansson-inc
+          set -euo pipefail
+          URL="https://github.com/akheron/jansson/releases/download/v2.11/jansson-2.11.tar.bz2"
+          SHA256="783132e2fc970feefc2fa54199ef65ee020bd8e0e991a78ea44b8586353a0947"
+          mkdir -p build/ps4-check/jansson
+          curl -sL "$URL" -o /tmp/jansson-2.11.tar.bz2
+          echo "$SHA256  /tmp/jansson-2.11.tar.bz2" | sha256sum -c -
+          tar xjf /tmp/jansson-2.11.tar.bz2 -C /tmp
+          cp -a /tmp/jansson-2.11/. build/ps4-check/jansson/
+          echo "JANSSON_INCLUDE=$(pwd)/build/ps4-check/jansson/src" >> "$GITHUB_ENV"
 
       - name: Check de compilacao
         shell: bash
