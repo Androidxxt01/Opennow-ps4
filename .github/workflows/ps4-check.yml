@@ -141,13 +141,12 @@ jobs:
           echo "$SHA256  /tmp/jansson-2.11.tar.bz2" | sha256sum -c -
           tar xjf /tmp/jansson-2.11.tar.bz2 -C /tmp
           cp -a /tmp/jansson-2.11/. build/ps4-check/jansson/
-          echo "JANSSON_INCLUDE=$(pwd)/build/ps4-check/jansson/src" >> "$GITHUB_ENV"
 
       - name: Check de compilacao
         shell: bash
         run: |
           set -o pipefail
-          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc LIBCXX_INCLUDE="$LIBCXX_INCLUDE" 2>&1 | tee check.log
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" LIBCXX_INCLUDE="$LIBCXX_INCLUDE" 2>&1 | tee check.log
 
       - name: Teste random_string (host)
         continue-on-error: false
@@ -163,7 +162,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc LIBCXX_INCLUDE="$LIBCXX_INCLUDE" link 2>&1 | tee link.log
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" LIBCXX_INCLUDE="$LIBCXX_INCLUDE" link 2>&1 | tee link.log
 
       - uses: actions/upload-artifact@v4
         if: always()

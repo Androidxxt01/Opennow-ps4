@@ -2,10 +2,10 @@ ROOT := $(abspath .)
 OPENORBIS ?= /opt/OpenOrbis-PS4-Toolchain
 CC = clang
 CXX = clang++
-JANSSON_DIR ?= $(BUILD_DIR)/jansson
-JANSSON_SRC_DIR := $(JANSSON_DIR)/src
-JANSSON_INCLUDE ?= $(JANSSON_SRC_DIR)
 BUILD_DIR ?= build/ps4-check
+JANSSON_DIR ?= $(CURDIR)/$(BUILD_DIR)/jansson
+JANSSON_SRC_DIR := $(JANSSON_DIR)/src
+JANSSON_INCLUDE := $(JANSSON_SRC_DIR)
 TARGET := --target=x86_64-pc-freebsd12-elf
 COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
 	-I$(ROOT)/app/src -I$(ROOT)/extern/libpeer/src \
