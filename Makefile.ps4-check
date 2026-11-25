@@ -59,6 +59,31 @@ WEBRTC_SOURCES := \
 LIBPEER_DIR := $(ROOT)/extern/libpeer/src
 WEBRTC_DIR := $(ROOT)/app/src/webrtc
 LIBPEER_SOURCES := $(wildcard $(LIBPEER_DIR)/*.c)
+SRTP_DIR := $(ROOT)/extern/libpeer/third_party/libsrtp
+SRTP_TEMPLATE := $(SRTP_DIR)/config_in_cmake.h
+SRTP_CONFIG := $(BUILD_DIR)/include/config.h
+SRTP_SOURCES := \
+	$(SRTP_DIR)/srtp/srtp.c \
+	$(SRTP_DIR)/crypto/cipher/cipher.c \
+	$(SRTP_DIR)/crypto/cipher/cipher_test_cases.c \
+	$(SRTP_DIR)/crypto/cipher/null_cipher.c \
+	$(SRTP_DIR)/crypto/cipher/aes.c \
+	$(SRTP_DIR)/crypto/cipher/aes_icm.c \
+	$(SRTP_DIR)/crypto/hash/auth.c \
+	$(SRTP_DIR)/crypto/hash/auth_test_cases.c \
+	$(SRTP_DIR)/crypto/hash/null_auth.c \
+	$(SRTP_DIR)/crypto/hash/hmac.c \
+	$(SRTP_DIR)/crypto/hash/sha1.c \
+	$(SRTP_DIR)/crypto/kernel/alloc.c \
+	$(SRTP_DIR)/crypto/kernel/crypto_kernel.c \
+	$(SRTP_DIR)/crypto/kernel/err.c \
+	$(SRTP_DIR)/crypto/kernel/key.c \
+	$(SRTP_DIR)/crypto/math/datatypes.c \
+	$(SRTP_DIR)/crypto/replay/rdb.c \
+	$(SRTP_DIR)/crypto/replay/rdbx.c
+SRTP_ARCHIVE := $(BUILD_DIR)/libsrtp-check.a
+SRTP_CFLAGS := -DHAVE_CONFIG_H -I$(SRTP_DIR)/crypto/include \
+	-I$(SRTP_DIR)/include -I$(BUILD_DIR)/include -include $(SRTP_CONFIG) -include strings.h -include stddef.h
 SRTP_HEADER := $(BUILD_DIR)/include/srtp2/srtp.h
 LIBPEER_INCLUDE_FLAGS := -I$(ROOT)/extern/libpeer/third_party/cJSON \
 	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/include \
@@ -81,6 +106,7 @@ USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
 GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
 WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
 LIBPEER_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(LIBPEER_SOURCES))
+SRTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(SRTP_SOURCES))
 MBEDTLS_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/mbedtls/%.o,$(filter $(ROOT)/%,$(MBEDTLS_SOURCES))) \
 	$(BUILD_DIR)/mbedtls/ssl_debug_helpers_generated.c.o
 MBEDTLS_ARCHIVE := $(BUILD_DIR)/libmbedtls-check.a
@@ -93,20 +119,23 @@ LINK_ARCHIVES := \
 	$(BUILD_DIR)/libgfn-check.a \
 	$(BUILD_DIR)/libwebrtc-check.a \
 	$(BUILD_DIR)/liblibpeer-check.a \
+	$(SRTP_ARCHIVE) \
 	$(MBEDTLS_ARCHIVE)
 LINK_TARGET := $(BUILD_DIR)/ps4-link-check
 
-.PHONY: all usrsctp gfn webrtc libpeer mbedtls link clean
-all: usrsctp gfn webrtc libpeer
+.PHONY: all usrsctp gfn webrtc libpeer srtp mbedtls link clean
+all: usrsctp gfn webrtc libpeer srtp
 
 usrsctp: $(USRSCTP_OBJECTS)
 gfn: $(GFN_OBJECTS)
 webrtc: $(WEBRTC_OBJECTS)
 libpeer: $(LIBPEER_OBJECTS)
+srtp: $(SRTP_OBJECTS)
 mbedtls: $(MBEDTLS_ARCHIVE)
 link: $(LINK_TARGET)
 
 $(LIBPEER_OBJECTS): $(SRTP_HEADER)
+$(SRTP_OBJECTS): $(SRTP_CONFIG) $(SRTP_HEADER)
 
 $(LINK_MAIN_OBJECT): $(LINK_MAIN)
 	@mkdir -p $(dir $@)
@@ -119,6 +148,8 @@ $(BUILD_DIR)/libgfn-check.a: $(GFN_OBJECTS)
 $(BUILD_DIR)/libwebrtc-check.a: $(WEBRTC_OBJECTS)
 	ar rcs $@ $^
 $(BUILD_DIR)/liblibpeer-check.a: $(LIBPEER_OBJECTS)
+	ar rcs $@ $^
+$(SRTP_ARCHIVE): $(SRTP_OBJECTS)
 	ar rcs $@ $^
 
 $(SSL_DEBUG_HELPERS):
@@ -149,11 +180,42 @@ $(SRTP_HEADER): $(ROOT)/extern/libpeer/third_party/libsrtp/include/srtp.h
 	mkdir -p $(dir $@)
 	cp $< $@
 
+$(SRTP_CONFIG): $(SRTP_TEMPLATE)
+	@mkdir -p $(dir $@)
+	awk '\
+		/#cmakedefine PACKAGE_VERSION/ {print "#define PACKAGE_VERSION \"2.4.2\""; next} \
+		/#cmakedefine PACKAGE_STRING/ {print "#define PACKAGE_STRING \"libsrtp2 2.4.2\""; next} \
+		/#cmakedefine HAVE_ARPA_INET_H 1/ {print "#define HAVE_ARPA_INET_H 1"; next} \
+		/#cmakedefine HAVE_BYTESWAP_H 1/ {print "#define HAVE_BYTESWAP_H 1"; next} \
+		/#cmakedefine HAVE_INTTYPES_H 1/ {print "#define HAVE_INTTYPES_H 1"; next} \
+		/#cmakedefine HAVE_NETINET_IN_H 1/ {print "#define HAVE_NETINET_IN_H 1"; next} \
+		/#cmakedefine HAVE_STDINT_H 1/ {print "#define HAVE_STDINT_H 1"; next} \
+		/#cmakedefine HAVE_STDLIB_H 1/ {print "#define HAVE_STDLIB_H 1"; next} \
+		/#cmakedefine HAVE_SYS_SOCKET_H 1/ {print "#define HAVE_SYS_SOCKET_H 1"; next} \
+		/#cmakedefine HAVE_SYS_TYPES_H 1/ {print "#define HAVE_SYS_TYPES_H 1"; next} \
+		/#cmakedefine HAVE_UNISTD_H 1/ {print "#define HAVE_UNISTD_H 1"; next} \
+		/#cmakedefine HAVE_UINT8_T 1/ {print "#define HAVE_UINT8_T 1"; next} \
+		/#cmakedefine HAVE_UINT16_T 1/ {print "#define HAVE_UINT16_T 1"; next} \
+		/#cmakedefine HAVE_UINT32_T 1/ {print "#define HAVE_UINT32_T 1"; next} \
+		/#cmakedefine HAVE_UINT64_T 1/ {print "#define HAVE_UINT64_T 1"; next} \
+		/#cmakedefine HAVE_INT32_T 1/ {print "#define HAVE_INT32_T 1"; next} \
+		/#cmakedefine HAVE_INET_ATON 1/ {print "#define HAVE_INET_ATON 1"; next} \
+		/#cmakedefine HAVE_SIGACTION 1/ {print "#define HAVE_SIGACTION 1"; next} \
+		/#cmakedefine HAVE_INLINE 1/ {print "#define HAVE_INLINE 1"; next} \
+		/@SIZEOF_UNSIGNED_LONG_CODE@/ {print "#define SIZEOF_UNSIGNED_LONG 8"; next} \
+		/@SIZEOF_UNSIGNED_LONG_LONG_CODE@/ {print "#define SIZEOF_UNSIGNED_LONG_LONG 8"; next} \
+		/#cmakedefine [A-Z0-9_]+ 1/ {print "/* " $$0 " */"; next} \
+		/#cmakedefine [A-Z0-9_]+ "@[^"]*"/ {print "/* " $$0 " */"; next} \
+		/#cmakedefine [A-Z0-9_]+ @[^@]*@/ {print "/* " $$0 " */"; next} \
+		{print} \
+	' $< > $@
+
 $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) \
 		$(if $(filter $(USRSCTP_DIR)/%,$<),$(USRSCTP_CFLAGS)) \
 		$(if $(filter $(LIBPEER_DIR)/%,$<),$(LIBPEER_INCLUDE_FLAGS)) \
+		$(if $(filter $(SRTP_DIR)/%,$<),$(SRTP_CFLAGS)) \
 		-c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
