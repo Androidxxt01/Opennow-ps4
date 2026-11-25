@@ -65,26 +65,43 @@ LIBPEER_INCLUDE_FLAGS := -I$(ROOT)/extern/libpeer/third_party/cJSON \
 	-I$(ROOT)/extern/libpeer/third_party/coreMQTT/source/interface \
 	-I$(BUILD_DIR)/include
 WEBRTC_INCLUDE_FLAGS := -I$(ROOT)/extern/borealis/library/include/borealis/extern/nanovg
+MBEDTLS_DIR := $(ROOT)/extern/libpeer/third_party/mbedtls
+MBEDTLS_LIBRARY_DIR := $(MBEDTLS_DIR)/library
+MBEDTLS_GEN_DIR := $(BUILD_DIR)/mbedtls-generated
+MBEDTLS_CONFIG_DEFINE := -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
+SSL_DEBUG_HELPERS := $(MBEDTLS_GEN_DIR)/ssl_debug_helpers_generated.c
+MBEDTLS_SOURCES := $(filter-out \
+	$(MBEDTLS_LIBRARY_DIR)/psa_crypto%.c \
+	$(MBEDTLS_LIBRARY_DIR)/psa_its_file.c, \
+	$(wildcard $(MBEDTLS_LIBRARY_DIR)/*.c))
+MBEDTLS_SOURCES += $(ROOT)/extern/libpeer/src/ps4_mbedtls_entropy.c $(SSL_DEBUG_HELPERS)
 USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
 GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
 WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
 LIBPEER_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(LIBPEER_SOURCES))
+MBEDTLS_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/mbedtls/%.o,$(filter $(ROOT)/%,$(MBEDTLS_SOURCES))) \
+	$(BUILD_DIR)/mbedtls/ssl_debug_helpers_generated.c.o
+MBEDTLS_ARCHIVE := $(BUILD_DIR)/libmbedtls-check.a
+OPENORBIS_LIBS := -L$(OPENORBIS)/lib -lc -lkernel -lSceNet -lSceNetCtl \
+	-lScePosix -lSceLibcInternal -lc++ -lc++abi -lc++experimental
 LINK_MAIN := $(ROOT)/tests/ps4/link_main.c
 LINK_MAIN_OBJECT := $(BUILD_DIR)/tests/ps4/link_main.c.o
 LINK_ARCHIVES := \
 	$(BUILD_DIR)/libusrsctp-check.a \
 	$(BUILD_DIR)/libgfn-check.a \
 	$(BUILD_DIR)/libwebrtc-check.a \
-	$(BUILD_DIR)/liblibpeer-check.a
+	$(BUILD_DIR)/liblibpeer-check.a \
+	$(MBEDTLS_ARCHIVE)
 LINK_TARGET := $(BUILD_DIR)/ps4-link-check
 
-.PHONY: all usrsctp gfn webrtc libpeer link clean
+.PHONY: all usrsctp gfn webrtc libpeer mbedtls link clean
 all: usrsctp gfn webrtc libpeer
 
 usrsctp: $(USRSCTP_OBJECTS)
 gfn: $(GFN_OBJECTS)
 webrtc: $(WEBRTC_OBJECTS)
 libpeer: $(LIBPEER_OBJECTS)
+mbedtls: $(MBEDTLS_ARCHIVE)
 link: $(LINK_TARGET)
 
 $(LIBPEER_OBJECTS): $(SRTP_HEADER)
@@ -102,11 +119,27 @@ $(BUILD_DIR)/libwebrtc-check.a: $(WEBRTC_OBJECTS)
 $(BUILD_DIR)/liblibpeer-check.a: $(LIBPEER_OBJECTS)
 	ar rcs $@ $^
 
+$(SSL_DEBUG_HELPERS):
+	@mkdir -p $(dir $@)
+	python3 $(MBEDTLS_DIR)/scripts/generate_ssl_debug_helpers.py --mbedtls-root $(MBEDTLS_DIR) $(MBEDTLS_GEN_DIR)
+
+$(BUILD_DIR)/mbedtls/%.c.o: $(ROOT)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -w -c $< -o $@
+
+$(BUILD_DIR)/mbedtls/ssl_debug_helpers_generated.c.o: $(SSL_DEBUG_HELPERS)
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) $(MBEDTLS_CONFIG_DEFINE) -I$(MBEDTLS_LIBRARY_DIR) -I$(MBEDTLS_GEN_DIR) -w -c $< -o $@
+
+$(MBEDTLS_ARCHIVE): $(MBEDTLS_OBJECTS)
+	ar rcs $@ $^
+
 $(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
 	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
 		-fuse-ld=lld -nostdlib \
 		$(LINK_MAIN_OBJECT) \
 		-Wl,--start-group $(LINK_ARCHIVES) -Wl,--end-group \
+		$(OPENORBIS_LIBS) \
 		-Wl,--unresolved-symbols=report-all -Wl,--error-limit=0 \
 		-o $@
 
