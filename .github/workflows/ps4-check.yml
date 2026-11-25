@@ -216,3 +216,89 @@ jobs:
           path: |
             build/ps4-check/ps4-link-check
           if-no-files-found: warn
+
+  pkg:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Dependencias
+        run: sudo apt-get update && sudo apt-get install -y clang lld llvm unzip python3-jinja2 python3-jsonschema curl
+
+      - name: OpenOrbis SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=OpenOrbis/OpenOrbis-PS4-Toolchain
+          mkdir -p /tmp/oo
+          gh release download -R $R --pattern 'toolchain-llvm-18.tar.gz' --dir /tmp/oo
+          cd /tmp/oo && tar xzf toolchain-llvm-18.tar.gz
+          OO=$(find /tmp/oo -name errno.h -path '*include*' -print -quit | sed 's|/include/.*||')
+          echo "OPENORBIS=$OO" >> "$GITHUB_ENV"
+
+      - name: Achar libc++
+        shell: bash
+        run: |
+          ATOMIC_FILE=$(find /tmp/oo -type f -name atomic -path '*c++*' | head -1)
+          LIBCXX_INCLUDE=$(dirname "$ATOMIC_FILE")
+          echo "LIBCXX_INCLUDE=$LIBCXX_INCLUDE" >> "$GITHUB_ENV"
+
+      - name: Baixar Jansson 2.11
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/akheron/jansson/releases/download/v2.11/jansson-2.11.tar.bz2"
+          SHA256="783132e2fc970feefc2fa54199ef65ee020bd8e0e991a78ea44b8586353a0947"
+          mkdir -p build/ps4-check/jansson
+          curl -sL "$URL" -o /tmp/jansson-2.11.tar.bz2
+          echo "$SHA256  /tmp/jansson-2.11.tar.bz2" | sha256sum -c -
+          tar xjf /tmp/jansson-2.11.tar.bz2 -C /tmp
+          cp -a /tmp/jansson-2.11/. build/ps4-check/jansson/
+
+      - name: Build ELF de entropia
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ld.lld
+          make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" LIBCXX_INCLUDE="$LIBCXX_INCLUDE" entropy 2>&1 | tee entropy.log
+
+      - name: Gerar pkg (NÃO TESTADO em hardware)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ELF=build/ps4-check/ps4-entropy-check
+          TITLE_ID=ONET00001
+          CONTENT_ID=IV0000-${TITLE_ID}_00-ENTROPYTEST0000
+          mkdir -p pkg/sce_sys/about
+          cp "$OPENORBIS/samples/hello_world/sce_sys/icon0.png" pkg/sce_sys/icon0.png
+          cp "$OPENORBIS/samples/hello_world/sce_sys/about/right.sprx" pkg/sce_sys/about/right.sprx
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_new pkg/sce_sys/param.sfo
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo APP_TYPE --type Integer --maxsize 4 --value 1
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo APP_VER --type Utf8 --maxsize 8 --value '1.00'
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo ATTRIBUTE --type Integer --maxsize 4 --value 0
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo CATEGORY --type Utf8 --maxsize 4 --value 'gd'
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo CONTENT_ID --type Utf8 --maxsize 48 --value "$CONTENT_ID"
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo DOWNLOAD_DATA_SIZE --type Integer --maxsize 4 --value 0
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo SYSTEM_VER --type Integer --maxsize 4 --value 0
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo TITLE --type Utf8 --maxsize 128 --value 'OpenNOW entropy test'
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo TITLE_ID --type Utf8 --maxsize 12 --value "$TITLE_ID"
+          "$OPENORBIS/bin/linux/PkgTool.Core" sfo_setentry pkg/sce_sys/param.sfo VERSION --type Utf8 --maxsize 8 --value '1.00'
+          "$OPENORBIS/bin/linux/create-fself" -in="$ELF" -out="eboot.oelf" --eboot "eboot.bin" --paid 0x3800000000000011
+          "$OPENORBIS/bin/linux/create-gp4" -out pkg.gp4 --content-id="$CONTENT_ID" --files "eboot.bin pkg/sce_sys/about/right.sprx pkg/sce_sys/param.sfo pkg/sce_sys/icon0.png"
+          "$OPENORBIS/bin/linux/PkgTool.Core" pkg_build pkg.gp4 .
+          echo "::warning::PKG gerado, NÃO TESTADO em hardware"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ps4-entropy-pkg
+          path: |
+            *.pkg
+            pkg.gp4
+            eboot.bin
+            entropy.log
+          if-no-files-found: warn
