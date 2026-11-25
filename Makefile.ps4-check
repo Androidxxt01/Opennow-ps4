@@ -13,7 +13,7 @@ COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
 	-I$(JANSSON_INCLUDE) -nostdlibinc
 C_INCLUDE_FLAGS := -isystem $(OPENORBIS)/include
 CXX_INCLUDE_FLAGS := -nostdinc++ -isystem $(LIBCXX_INCLUDE) $(C_INCLUDE_FLAGS)
-CFLAGS ?= -std=c11 -Wall -Wextra -ferror-limit=0
+CFLAGS ?= -std=c11 -Wall -Wextra -D_GNU_SOURCE -ferror-limit=0
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -ferror-limit=0
 
 USRSCTP_DIR := $(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib
@@ -55,7 +55,13 @@ WEBRTC_SOURCES := \
 	$(ROOT)/app/src/webrtc/shared.cpp \
 	$(ROOT)/app/src/webrtc/signaling.cpp
 LIBPEER_DIR := $(ROOT)/extern/libpeer/src
+WEBRTC_DIR := $(ROOT)/app/src/webrtc
 LIBPEER_SOURCES := $(wildcard $(LIBPEER_DIR)/*.c)
+SRTP_HEADER := $(BUILD_DIR)/include/srtp2/srtp.h
+LIBPEER_INCLUDE_FLAGS := -I$(ROOT)/extern/libpeer/third_party/cJSON \
+	-I$(ROOT)/extern/libpeer/third_party/coreHTTP/source/interface \
+	-I$(BUILD_DIR)/include
+WEBRTC_INCLUDE_FLAGS := -I$(ROOT)/extern/borealis/library/include/borealis/extern/nanovg
 USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
 GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
 WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
@@ -69,14 +75,24 @@ gfn: $(GFN_OBJECTS)
 webrtc: $(WEBRTC_OBJECTS)
 libpeer: $(LIBPEER_OBJECTS)
 
+$(LIBPEER_OBJECTS): $(SRTP_HEADER)
+
+$(SRTP_HEADER): $(ROOT)/extern/libpeer/third_party/libsrtp/include/srtp.h
+	mkdir -p $(dir $@)
+	cp $< $@
+
 $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) \
-		$(if $(filter $(USRSCTP_DIR)/%,$<),$(USRSCTP_CFLAGS)) -c $< -o $@
+		$(if $(filter $(USRSCTP_DIR)/%,$<),$(USRSCTP_CFLAGS)) \
+		$(if $(filter $(LIBPEER_DIR)/%,$<),$(LIBPEER_INCLUDE_FLAGS)) \
+		-c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(ROOT)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
+		$(if $(filter $(WEBRTC_DIR)/%,$<),$(WEBRTC_INCLUDE_FLAGS)) \
+		-c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
