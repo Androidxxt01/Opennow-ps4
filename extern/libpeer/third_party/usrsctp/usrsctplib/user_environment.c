@@ -397,6 +397,41 @@ finish_random(void)
 {
 	return;
 }
+#elif defined(__PS4__)
+#include <stdlib.h>
+#include <sys/random.h>
+/*
+ * ATENCAO: a implementacao de getrandom() no fork musl do OpenOrbis NAO foi
+ * verificada. A declaracao existe em sys/random.h, mas o musl original usa
+ * syscall do Linux e o PS4 e FreeBSD. Isto precisa de teste em hardware.
+ * Falha fechada: -1, 0 ou qualquer retorno parcial aborta o processo; nao ha
+ * fallback para rand(), time(), enderecos de memoria ou /dev/urandom.
+ */
+void
+init_random(void)
+{
+	return;
+}
+void
+read_random(void *buf, size_t size)
+{
+	size_t position = 0;
+
+	while (position < size) {
+		const size_t remaining = size - position;
+		ssize_t n = getrandom((char *)buf + position, remaining, 0);
+
+		if (n <= 0 || (size_t)n != remaining) {
+			abort();
+		}
+		position += (size_t)n;
+	}
+}
+void
+finish_random(void)
+{
+	return;
+}
 #else
 #error "Unknown platform. Please provide platform specific RNG."
 #endif
