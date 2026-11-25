@@ -141,6 +141,15 @@ jobs:
           set -o pipefail
           make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" JANSSON_INCLUDE=/tmp/jansson-inc LIBCXX_INCLUDE="$LIBCXX_INCLUDE" 2>&1 | tee check.log
 
+      - name: Teste random_string (host)
+        continue-on-error: false
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -Iextern/libpeer/src -Iextern/libpeer/third_party/mbedtls/include \
+            -o /tmp/random_string_test tests/host/random_string.c extern/libpeer/src/utils.c
+          /tmp/random_string_test
+
       - name: Check de link (simbolos ausentes)
         continue-on-error: true
         shell: bash
