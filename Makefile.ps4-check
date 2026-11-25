@@ -133,6 +133,9 @@ OPENORBIS_LIBS := -L$(OPENORBIS)/lib -lc -lkernel -lSceNet -lSceNetCtl \
 	-lScePosix -lSceLibcInternal -lc++ -lc++abi -lc++experimental
 LINK_MAIN := $(ROOT)/tests/ps4/link_main.c
 LINK_MAIN_OBJECT := $(BUILD_DIR)/tests/ps4/link_main.c.o
+ENTROPY_MAIN := $(ROOT)/tests/ps4/entropy_main.c
+ENTROPY_MAIN_OBJECT := $(BUILD_DIR)/tests/ps4/entropy_main.c.o
+ENTROPY_TARGET := $(BUILD_DIR)/ps4-entropy-check
 LINK_ARCHIVES := \
 	$(BUILD_DIR)/libusrsctp-check.a \
 	$(BUILD_DIR)/libgfn-check.a \
@@ -143,7 +146,7 @@ LINK_ARCHIVES := \
 	$(JANSSON_ARCHIVE)
 LINK_TARGET := $(BUILD_DIR)/ps4-link-check
 
-.PHONY: all usrsctp gfn webrtc libpeer srtp mbedtls link clean
+.PHONY: all usrsctp gfn webrtc libpeer srtp mbedtls link entropy clean
 all: usrsctp gfn webrtc libpeer srtp
 
 usrsctp: $(USRSCTP_OBJECTS)
@@ -153,6 +156,7 @@ libpeer: $(LIBPEER_OBJECTS)
 srtp: $(SRTP_OBJECTS)
 mbedtls: $(MBEDTLS_ARCHIVE)
 link: $(LINK_TARGET)
+entropy: $(ENTROPY_TARGET)
 
 $(LIBPEER_OBJECTS): $(SRTP_HEADER)
 $(SRTP_OBJECTS): $(SRTP_CONFIG) $(SRTP_HEADER)
@@ -247,6 +251,19 @@ $(BUILD_DIR)/jansson/%.c.o: $(JANSSON_SRC_DIR)/%.c $(JANSSON_PRIVATE_CONFIG) $(J
 
 $(JANSSON_ARCHIVE): $(JANSSON_OBJECTS)
 	$(AR) rcs $@ $^
+
+$(ENTROPY_MAIN_OBJECT): $(ENTROPY_MAIN)
+	@mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(C_INCLUDE_FLAGS) $(CFLAGS) -fPIC -c $< -o $@
+
+$(ENTROPY_TARGET): $(ENTROPY_MAIN_OBJECT) $(BUILD_DIR)/libmbedtls-check.a $(BUILD_DIR)/liblibpeer-check.a
+	$(LD) -m elf_x86_64 -pie --script $(OPENORBIS)/link.x --eh-frame-hdr \
+		-L$(OPENORBIS)/lib \
+		$(OPENORBIS)/lib/crt1.o $(ENTROPY_MAIN_OBJECT) \
+		--start-group $(BUILD_DIR)/libmbedtls-check.a $(BUILD_DIR)/liblibpeer-check.a --end-group \
+		$(OPENORBIS_LIBS) \
+		--unresolved-symbols=report-all --error-limit=0 \
+		-o $@
 
 $(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
 	$(LD) -m elf_x86_64 -pie --script $(OPENORBIS)/link.x --eh-frame-hdr \
