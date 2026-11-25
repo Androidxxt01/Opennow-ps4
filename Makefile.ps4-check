@@ -53,7 +53,9 @@ WEBRTC_SOURCES := \
 	$(ROOT)/app/src/webrtc/negotiation.cpp \
 	$(ROOT)/app/src/webrtc/nvst_sdp.cpp \
 	$(ROOT)/app/src/webrtc/shared.cpp \
-	$(ROOT)/app/src/webrtc/signaling.cpp
+	$(ROOT)/app/src/webrtc/signaling.cpp \
+	$(ROOT)/app/src/stream_diagnostics.cpp \
+	$(ROOT)/app/src/mbedtls_timing_compat.c
 LIBPEER_DIR := $(ROOT)/extern/libpeer/src
 WEBRTC_DIR := $(ROOT)/app/src/webrtc
 LIBPEER_SOURCES := $(wildcard $(LIBPEER_DIR)/*.c)
