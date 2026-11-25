@@ -13,8 +13,8 @@ COMMON_FLAGS := $(TARGET) -D__PS4__ -D__Userspace__ -DSCTP_SIMPLE_ALLOCATOR \
 	-I$(JANSSON_INCLUDE) -nostdlibinc
 C_INCLUDE_FLAGS := -isystem $(OPENORBIS)/include
 CXX_INCLUDE_FLAGS := -nostdinc++ -isystem $(LIBCXX_INCLUDE) $(C_INCLUDE_FLAGS)
-CFLAGS ?= -std=c11 -Wall -Wextra -D_GNU_SOURCE -ferror-limit=0
-CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -ferror-limit=0
+CFLAGS ?= -std=c11 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
+CXXFLAGS ?= -std=c++20 -Wall -Wextra -D_GNU_SOURCE -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -ferror-limit=0
 
 USRSCTP_DIR := $(ROOT)/extern/libpeer/third_party/usrsctp/usrsctplib
 # O alvo freebsd12 define __FreeBSD__ por padrao; usrsctp precisa do caminho
