@@ -60,9 +60,75 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          grep -rniE "random|entropy|getentropy" "$OPENORBIS/include" | cut -c1-200 | head -60
-          find "$OPENORBIS/lib" -type f \( -name '*.a' -o -name '*.so' -o -name '*.sprx' \) | head -30
-          for f in $(find "$OPENORBIS/lib" -type f -name '*.a' | head -20); do nm -g --defined-only "$f" 2>/dev/null | grep -iE "random|entropy|rand" ; done | head -60
+          : > /tmp/rng_headers.txt
+          : > /tmp/rng_random_h.txt
+          : > /tmp/rng_net_h.txt
+          : > /tmp/rng_libs.txt
+          : > /tmp/rng_archives.txt
+          : > /tmp/rng_syms.txt
+          : > /tmp/rng_samples.txt
+          : > /tmp/rng_usage.txt
+          : > /tmp/rng_sysrandom.txt
+
+          grep -rniE --include='*.h' --exclude-dir='c++' \
+            "random|entropy|getentropy|arandom" \
+            "$OPENORBIS/include" > /tmp/rng_headers.txt 2>&1 || true
+
+          if [ -f "$OPENORBIS/include/orbis/Random.h" ]; then
+            cat "$OPENORBIS/include/orbis/Random.h" > /tmp/rng_random_h.txt 2>&1 || true
+          fi
+          if [ -f "$OPENORBIS/include/orbis/Net.h" ]; then
+            grep -n -B5 -A15 "sceNetGetRandom" "$OPENORBIS/include/orbis/Net.h" \
+              > /tmp/rng_net_h.txt 2>&1 || true
+          fi
+
+          find "$OPENORBIS/lib" -type f > /tmp/rng_libs.txt 2>&1 || true
+          find "$OPENORBIS/lib" -type f \( -name '*.a' -o -name '*.so' \) \
+            > /tmp/rng_archives.txt 2>&1 || true
+
+          while IFS= read -r f; do
+            syms=$(nm -g --defined-only "$f" 2>/dev/null) || \
+              syms=$(llvm-nm -g --defined-only "$f" 2>/dev/null) || syms=""
+            hits=$(printf '%s\n' "$syms" | grep -iE "random|entropy|arandom" 2>/dev/null || true)
+            if [ -n "$hits" ]; then
+              echo "== $f ==" >> /tmp/rng_syms.txt
+              printf '%s\n' "$hits" >> /tmp/rng_syms.txt
+            fi
+          done < /tmp/rng_archives.txt
+
+          for d in "$OPENORBIS/samples" "$OPENORBIS/docs"; do
+            if [ -d "$d" ]; then
+              grep -rniE "sceRandom|GetRandomNumber|arc4random|getentropy|getrandom" "$d" \
+                >> /tmp/rng_samples.txt 2>&1 || true
+              grep -rn -B5 -A5 "sceRandomGetRandomNumber" "$d" \
+                >> /tmp/rng_usage.txt 2>&1 || true
+            fi
+          done
+
+          if [ -f "$OPENORBIS/include/sys/random.h" ]; then
+            cat "$OPENORBIS/include/sys/random.h" > /tmp/rng_sysrandom.txt 2>&1 || true
+            grep -nE "getrandom|getentropy" "$OPENORBIS/include/sys/random.h" \
+              >> /tmp/rng_sysrandom.txt 2>&1 || true
+          else
+            echo "sys/random.h: ausente" > /tmp/rng_sysrandom.txt
+          fi
+
+          echo "=== HEADERS (60) ==="
+          head -60 /tmp/rng_headers.txt
+          echo "=== include/orbis/Random.h (completo) ==="
+          cat /tmp/rng_random_h.txt
+          echo "=== include/orbis/Net.h: sceNetGetRandom (60) ==="
+          head -60 /tmp/rng_net_h.txt
+          echo "=== LIBS (60) ==="
+          head -60 /tmp/rng_libs.txt
+          echo "=== SIMBOLOS (60) ==="
+          head -60 /tmp/rng_syms.txt
+          echo "=== SAMPLES/DOCS (80) ==="
+          head -80 /tmp/rng_samples.txt
+          echo "=== sceRandomGetRandomNumber com contexto (100) ==="
+          head -100 /tmp/rng_usage.txt
+          echo "=== sys/random.h (60) ==="
+          head -60 /tmp/rng_sysrandom.txt
 
       - name: Isolar headers do Jansson
         run: |
