@@ -2,6 +2,7 @@ ROOT := $(abspath .)
 OPENORBIS ?= /opt/OpenOrbis-PS4-Toolchain
 CC = clang
 CXX = clang++
+LD ?= ld.lld
 BUILD_DIR ?= build/ps4-check
 JANSSON_DIR ?= $(CURDIR)/$(BUILD_DIR)/jansson
 JANSSON_SRC_DIR := $(JANSSON_DIR)/src
@@ -247,12 +248,12 @@ $(JANSSON_ARCHIVE): $(JANSSON_OBJECTS)
 	ar rcs $@ $^
 
 $(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
-	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
-		-fuse-ld=lld -nostdlib \
-		$(LINK_MAIN_OBJECT) \
-		-Wl,--start-group $(LINK_ARCHIVES) -Wl,--end-group \
+	$(LD) -m elf_x86_64 -pie --script $(OPENORBIS)/link.x --eh-frame-hdr \
+		-L$(OPENORBIS)/lib \
+		$(OPENORBIS)/lib/crt1.o $(LINK_MAIN_OBJECT) \
+		--start-group $(LINK_ARCHIVES) --end-group \
 		$(OPENORBIS_LIBS) \
-		-Wl,--unresolved-symbols=report-all -Wl,--error-limit=0 \
+		--unresolved-symbols=report-all --error-limit=0 \
 		-o $@
 
 $(SRTP_HEADER): $(ROOT)/extern/libpeer/third_party/libsrtp/include/srtp.h
