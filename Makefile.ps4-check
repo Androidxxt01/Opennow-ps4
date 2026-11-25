@@ -69,16 +69,46 @@ USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
 GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
 WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
 LIBPEER_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(LIBPEER_SOURCES))
+LINK_MAIN := $(ROOT)/tests/ps4/link_main.c
+LINK_MAIN_OBJECT := $(BUILD_DIR)/tests/ps4/link_main.c.o
+LINK_ARCHIVES := \
+	$(BUILD_DIR)/libusrsctp-check.a \
+	$(BUILD_DIR)/libgfn-check.a \
+	$(BUILD_DIR)/libwebrtc-check.a \
+	$(BUILD_DIR)/liblibpeer-check.a
+LINK_TARGET := $(BUILD_DIR)/ps4-link-check
 
-.PHONY: all usrsctp gfn webrtc libpeer clean
+.PHONY: all usrsctp gfn webrtc libpeer link clean
 all: usrsctp gfn webrtc libpeer
 
 usrsctp: $(USRSCTP_OBJECTS)
 gfn: $(GFN_OBJECTS)
 webrtc: $(WEBRTC_OBJECTS)
 libpeer: $(LIBPEER_OBJECTS)
+link: $(LINK_TARGET)
 
 $(LIBPEER_OBJECTS): $(SRTP_HEADER)
+
+$(LINK_MAIN_OBJECT): $(LINK_MAIN)
+	@mkdir -p $(dir $@)
+	$(CXX) -x c++ $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/libusrsctp-check.a: $(USRSCTP_OBJECTS)
+	ar rcs $@ $^
+$(BUILD_DIR)/libgfn-check.a: $(GFN_OBJECTS)
+	ar rcs $@ $^
+$(BUILD_DIR)/libwebrtc-check.a: $(WEBRTC_OBJECTS)
+	ar rcs $@ $^
+$(BUILD_DIR)/liblibpeer-check.a: $(LIBPEER_OBJECTS)
+	ar rcs $@ $^
+
+$(LINK_TARGET): $(LINK_MAIN_OBJECT) $(LINK_ARCHIVES)
+	$(CXX) $(COMMON_FLAGS) $(CXX_INCLUDE_FLAGS) $(CXXFLAGS) \
+		-fuse-ld=lld -nostdlib \
+		$(LINK_MAIN_OBJECT) \
+		-Wl,--start-group $(LINK_ARCHIVES) -Wl,--end-group \
+		-Wl,--unresolved-symbols=report-all -Wl,--error-limit=0 \
+		-o $@
 
 $(SRTP_HEADER): $(ROOT)/extern/libpeer/third_party/libsrtp/include/srtp.h
 	mkdir -p $(dir $@)
