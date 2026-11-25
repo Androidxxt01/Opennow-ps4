@@ -6,6 +6,15 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
 
+#if !defined(MBEDTLS_NO_PLATFORM_ENTROPY)
+#error "teste exige MBEDTLS_NO_PLATFORM_ENTROPY"
+#endif
+#if defined(MBEDTLS_ENTROPY_HARDWARE_ALT) || \
+    defined(MBEDTLS_ENTROPY_NV_SEED) || \
+    defined(MBEDTLS_TEST_NULL_ENTROPY)
+#error "config de teste nao pode ter fonte de entropia ativa"
+#endif
+
 static void print_hex(const unsigned char *buf, size_t len)
 {
     for (size_t i = 0; i < len; i++) {

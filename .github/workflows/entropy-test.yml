@@ -15,9 +15,10 @@ jobs:
         run: |
           mkdir -p build/entropy-test
           MBEDTLS=extern/libpeer/third_party/mbedtls/library
-          cc -Iextern/libpeer/third_party/mbedtls/include \
+          cc -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"' \
+             -Iextern/libpeer/third_party/mbedtls/include \
              tests/host/ctr_drbg_unseeded.c \
-             $MBEDTLS/{aes,aesce,ctr_drbg,entropy,sha256,sha512,sha1,ripemd160,md,md5,bignum,bignum_core,platform_util,constant_time}.c \
+             $MBEDTLS/{aes,aesni,aesce,ctr_drbg,entropy,sha256,sha512,sha1,ripemd160,md,md5,bignum,bignum_core,platform_util,constant_time}.c \
              -o build/entropy-test/ctr_drbg_unseeded
 
       - name: Execucao 1
