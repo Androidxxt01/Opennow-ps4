@@ -168,6 +168,35 @@ jobs:
           set -o pipefail
           command -v ld.lld
           make -k -f Makefile.ps4-check OPENORBIS="$OPENORBIS" LIBCXX_INCLUDE="$LIBCXX_INCLUDE" link 2>&1 | tee link.log
+          if grep -Eq 'entry symbol|undefined symbol|undefined reference' link.log; then
+            echo "::error::link.log contem entry/undefined"
+            exit 1
+          fi
+
+      - name: Inspecionar ELF PS4
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ELF=build/ps4-check/ps4-link-check
+          if [ ! -f "$ELF" ]; then
+            echo "::warning::ELF ausente: $ELF"
+            exit 0
+          fi
+          llvm-readelf -h "$ELF" | tee readelf-h.txt
+          llvm-readelf -l "$ELF" | tee readelf-l.txt
+          llvm-nm -D --undefined-only "$ELF" | tee nm-undef.txt || true
+          ENTRY=$(llvm-readelf -h "$ELF" | awk '/Entry point address:/{print $4}')
+          TYPE=$(llvm-readelf -h "$ELF" | awk '/Type:/{print $2}')
+          echo "entry=$ENTRY type=$TYPE"
+          if [ "$ENTRY" = "0x0" ] || [ -z "$ENTRY" ]; then
+            echo "::error::Entry point invalido: $ENTRY"
+            exit 1
+          fi
+          case "$TYPE" in
+            DYN|EXEC) ;;
+            *) echo "::error::Tipo ELF inesperado para create-fself: $TYPE"; exit 1 ;;
+          esac
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -176,3 +205,14 @@ jobs:
           path: |
             check.log
             link.log
+            readelf-h.txt
+            readelf-l.txt
+            nm-undef.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ps4-elf
+          path: |
+            build/ps4-check/ps4-link-check
+          if-no-files-found: warn
