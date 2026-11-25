@@ -45,11 +45,29 @@ USRSCTP_SOURCES := \
 	$(USRSCTP_DIR)/user_recv_thread.c \
 	$(USRSCTP_DIR)/user_socket.c
 GFN_SOURCES := $(wildcard $(ROOT)/app/src/gfn/*.cpp)
-SOURCES := $(USRSCTP_SOURCES) $(GFN_SOURCES)
-OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(SOURCES))
+WEBRTC_SOURCES := \
+	$(ROOT)/app/src/webrtc/diagnostics.cpp \
+	$(ROOT)/app/src/webrtc/diagnostic_writer.cpp \
+	$(ROOT)/app/src/webrtc/input.cpp \
+	$(ROOT)/app/src/webrtc/media.cpp \
+	$(ROOT)/app/src/webrtc/negotiation.cpp \
+	$(ROOT)/app/src/webrtc/nvst_sdp.cpp \
+	$(ROOT)/app/src/webrtc/shared.cpp \
+	$(ROOT)/app/src/webrtc/signaling.cpp
+LIBPEER_DIR := $(ROOT)/extern/libpeer/src
+LIBPEER_SOURCES := $(wildcard $(LIBPEER_DIR)/*.c)
+USRSCTP_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(USRSCTP_SOURCES))
+GFN_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(GFN_SOURCES))
+WEBRTC_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(WEBRTC_SOURCES))
+LIBPEER_OBJECTS := $(patsubst $(ROOT)/%,$(BUILD_DIR)/%.o,$(LIBPEER_SOURCES))
 
-.PHONY: all clean
-all: $(OBJECTS)
+.PHONY: all usrsctp gfn webrtc libpeer clean
+all: usrsctp gfn webrtc libpeer
+
+usrsctp: $(USRSCTP_OBJECTS)
+gfn: $(GFN_OBJECTS)
+webrtc: $(WEBRTC_OBJECTS)
+libpeer: $(LIBPEER_OBJECTS)
 
 $(BUILD_DIR)/%.c.o: $(ROOT)/%.c
 	@mkdir -p $(dir $@)
